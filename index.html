@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カスハラ対応記録・証跡システム | くらし雑貨 ほのぼのマート（デモ）</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --line:#dde1e7; --ink:#23272f; --sub:#6b7280;
+    --accent:#2563eb; --accent-dark:#1d4ed8; --danger:#dc2626; --warn:#d97706;
+    --ok:#059669; --mid:#ca8a04; --radius:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+  header.site{background:#1f2937;color:#fff;padding:18px 16px}
+  header.site .wrap{max-width:1100px;margin:0 auto}
+  header.site h1{font-size:1.25rem;margin:0 0 4px}
+  header.site p{margin:0;font-size:.85rem;color:#cbd5e1}
+  main{max-width:1100px;margin:0 auto;padding:16px}
+  section.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+  section.card>h2{font-size:1.05rem;margin:0 0 12px;border-left:4px solid var(--accent);padding-left:8px}
+  h3{font-size:.95rem;margin:16px 0 8px}
+  /* dashboard */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px}
+  .stat{background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:10px;text-align:center}
+  .stat .num{font-size:1.6rem;font-weight:700;display:block}
+  .stat .label{font-size:.78rem;color:var(--sub)}
+  .bar-row{display:grid;grid-template-columns:110px 1fr 40px;align-items:center;gap:8px;font-size:.85rem;margin:4px 0}
+  .bar-track{background:#eef1f5;border-radius:6px;height:14px;overflow:hidden}
+  .bar-fill{height:100%;background:var(--accent);border-radius:6px}
+  .bar-fill.sev-low{background:#94a3b8}.bar-fill.sev-mid{background:var(--mid)}
+  .bar-fill.sev-high{background:var(--warn)}.bar-fill.sev-urgent{background:var(--danger)}
+  .dash-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  /* form */
+  form .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  label{display:block;font-size:.82rem;font-weight:600;margin-bottom:4px}
+  input,select,textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:.92rem;font-family:inherit;background:#fff}
+  textarea{resize:vertical}
+  .field{margin-bottom:4px}
+  .btn{display:inline-block;border:none;border-radius:6px;padding:9px 18px;font-size:.92rem;cursor:pointer;font-family:inherit}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent-dark)}
+  .btn-ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .btn-small{padding:5px 10px;font-size:.82rem}
+  .form-actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+  .note{font-size:.8rem;color:var(--sub)}
+  /* filters & list */
+  .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px}
+  .record{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;background:#fff}
+  .record-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+  .record-head time{font-size:.82rem;color:var(--sub)}
+  .record-head .who{font-size:.85rem;font-weight:600}
+  .badge{display:inline-block;font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 9px;color:#fff}
+  .badge.channel{background:#475569}
+  .badge.status-open{background:#64748b}.badge.status-doing{background:var(--accent)}.badge.status-done{background:var(--ok)}
+  .sev-low{background:#94a3b8}.sev-mid{background:var(--mid)}.sev-high{background:var(--warn)}.sev-urgent{background:var(--danger)}
+  .record p{margin:4px 0;font-size:.9rem}
+  .record .meta{font-size:.8rem;color:var(--sub)}
+  .record-actions{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+  /* timeline */
+  .timeline{list-style:none;margin:10px 0 0;padding:0 0 0 14px;border-left:2px solid var(--line)}
+  .timeline li{position:relative;padding:0 0 12px 10px;font-size:.88rem}
+  .timeline li::before{content:"";position:absolute;left:-20px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+  .timeline time{font-size:.78rem;color:var(--sub);display:block}
+  .detail-box{border-top:1px dashed var(--line);margin-top:10px;padding-top:6px}
+  /* escalation */
+  .esc-flow{background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px}
+  .esc-flow ul{margin:6px 0;padding-left:4px;list-style:none}
+  .esc-flow li{padding:4px 0;font-size:.9rem}
+  .esc-flow input[type="checkbox"]{width:auto;margin-right:8px}
+  /* templates */
+  .template{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px}
+  .template h3{margin:0 0 6px}
+  .template pre{white-space:pre-wrap;background:#f8fafc;border:1px solid var(--line);border-radius:6px;padding:10px;font-family:inherit;font-size:.88rem;margin:0 0 8px}
+  footer.site{max-width:1100px;margin:0 auto;padding:8px 16px 32px;color:var(--sub);font-size:.78rem}
+  @media (max-width:560px){
+    .bar-row{grid-template-columns:86px 1fr 34px}
+    header.site h1{font-size:1.05rem}
+  }
+  /* print report */
+  #print-area{display:none}
+  @media print{
+    body>*{display:none !important}
+    body>#print-area{display:block !important}
+    #print-area{font-size:12px;color:#000}
+    #print-area table{border-collapse:collapse;width:100%}
+    #print-area th,#print-area td{border:1px solid #666;padding:4px 6px;text-align:left;vertical-align:top}
+  }
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <h1>カスハラ対応記録・証跡システム</h1>
+    <p>くらし雑貨 ほのぼのマート（架空の小売チェーン）｜カスタマーハラスメント対応の記録・共有・エスカレーション支援デモ</p>
+  </div>
+</header>
+
+<main>
+  <!-- ダッシュボード -->
+  <section class="card" aria-labelledby="dash-h">
+    <h2 id="dash-h">統計ダッシュボード</h2>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="dash-cols">
+      <div>
+        <h3>分類別</h3>
+        <div id="bars-category"></div>
+      </div>
+      <div>
+        <h3>深刻度別</h3>
+        <div id="bars-severity"></div>
+      </div>
+      <div>
+        <h3>チャネル別</h3>
+        <div id="bars-channel"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 登録フォーム -->
+  <section class="card" aria-labelledby="form-h">
+    <h2 id="form-h">対応記録を登録</h2>
+    <form id="record-form">
+      <div class="grid">
+        <div class="field">
+          <label for="f-datetime">日時</label>
+          <input type="datetime-local" id="f-datetime" required>
+        </div>
+        <div class="field">
+          <label for="f-channel">チャネル</label>
+          <select id="f-channel" required>
+            <option value="電話">電話</option>
+            <option value="メール">メール</option>
+            <option value="チャット">チャット</option>
+            <option value="SNS">SNS</option>
+            <option value="対面">対面</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-party">相手区分</label>
+          <select id="f-party" required>
+            <option value="顧客">顧客</option>
+            <option value="取引先">取引先</option>
+            <option value="不明">不明</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-category">分類</label>
+          <select id="f-category" required>
+            <option value="暴言・脅迫">暴言・脅迫</option>
+            <option value="過剰な要求">過剰な要求</option>
+            <option value="長時間拘束">長時間拘束</option>
+            <option value="SNS晒し予告">SNS晒し予告</option>
+            <option value="セクハラ">セクハラ</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-severity">深刻度</label>
+          <select id="f-severity" required>
+            <option value="低">低</option>
+            <option value="中">中</option>
+            <option value="高">高</option>
+            <option value="緊急">緊急</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-staff">対応者</label>
+          <input type="text" id="f-staff" placeholder="例: 店舗スタッフA" required>
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label for="f-content">内容メモ（何があったか）</label>
+        <textarea id="f-content" rows="3" placeholder="相手の要求・発言の要点を、事実ベースで記録してください" required></textarea>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label for="f-action">対応経過メモ（一次対応）</label>
+        <textarea id="f-action" rows="2" placeholder="その場でどう対応したかを記録してください"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">記録を登録</button>
+        <span class="note">登録すると証跡タイムラインに「登録」「一次対応」が自動で記録されます。</span>
+      </div>
+    </form>
+  </section>
+
+<!-- 一覧・検索・フィルタ -->
+<section class="card" aria-labelledby="list-h">
+<h2 id="list-h">対応記録の一覧</h2>
+<div class="filters">
+<div class="field">
+<label for="q-search">キーワード検索</label>
+<input type="search" id="q-search" placeholder="内容・対応者で検索">
+</div>
+<div class="field">
+<label for="q-channel">チャネル</label>
+<select id="q-channel">
+<option value="">すべて</option>
+<option value="電話">電話</option>
+<option value="メール">メール</option>
+<option value="チャット">チャット</option>
+<option value="SNS">SNS</option>
+<option value="対面">対面</option>
+</select>
+</div>
+<div class="field">
+<label for="q-severity">深刻度</label>
+<select id="q-severity">
+<option value="">すべて</option>
+<option value="低">低</option>
+<option value="中">中</option>
+<option value="高">高</option>
+<option value="緊急">緊急</option>
+</select>
+</div>
+<div class="field">
+<label for="q-status">ステータス</label>
+<select id="q-status">
+<option value="">すべて</option>
+<option value="未対応">未対応</option>
+<option value="対応中">対応中</option>
+<option value="完了">完了</option>
+</select>
+</div>
+</div>
+<div class="form-actions" style="margin:0 0 12px">
+<button type="button" class="btn btn-ghost btn-small" id="btn-csv">CSVエクスポート</button>
+<button type="button" class="btn btn-ghost btn-small" id="btn-print">印刷用レポート</button>
+<button type="button" class="btn btn-ghost btn-small" id="btn-reset">サンプルデータに戻す</button>
+</div>
+<p class="note" id="list-count"></p>
+<div id="record-list"></div>
+</section>
+
+<!-- エスカレーション手順 -->
+<section class="card" aria-labelledby="esc-h">
+<h2 id="esc-h">エスカレーション手順チェックリスト</h2>
+<div class="field" style="max-width:260px">
+<label for="esc-severity">深刻度を選択</label>
+<select id="esc-severity">
+<option value="低">低</option>
+<option value="中" selected>中</option>
+<option value="高">高</option>
+<option value="緊急">緊急</option>
+</select>
+</div>
+<div class="esc-flow" id="esc-flow" style="margin-top:10px"></div>
+<p class="note">※ デモ用の一般的な手順例です。実際の運用では自社の対応マニュアル・就業規則に沿ってカスタマイズしてください。</p>
+</section>
+
+<!-- 対応テンプレート -->
+<section class="card" aria-labelledby="tpl-h">
+<h2 id="tpl-h">対応テンプレート文例</h2>
+<p class="note">その場で使える定型文です。「コピー」ボタンでクリップボードにコピーできます。相手を刺激しない、事実確認と線引きを両立させる表現を意識しています。</p>
+<div id="template-list"></div>
+</section>
+</main>
+
+<footer class="site">
+<p>このデモは架空の店舗・架空の記録のみで構成されています。データはこの端末のブラウザ（localStorage）にのみ保存され、外部に送信されることはありません。</p>
+</footer>
+
+<!-- 印刷用レポート -->
+<div id="print-area" aria-hidden="true"></div>
+
+<script>
+"use strict";
+var STORAGE_KEY = "hrl_records_v1";
+
+var CHANNELS = ["電話","メール","チャット","SNS","対面"];
+var CATEGORIES = ["暴言・脅迫","過剰な要求","長時間拘束","SNS晒し予告","セクハラ","その他"];
+var SEVERITIES = ["低","中","高","緊急"];
+var SEV_CLASS = {"低":"sev-low","中":"sev-mid","高":"sev-high","緊急":"sev-urgent"};
+var STATUS_CLASS = {"未対応":"status-open","対応中":"status-doing","完了":"status-done"};
+
+function nowStr(d){
+d = d || new Date();
+function p(n){ return (n<10?"0":"")+n;}
+return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
+}
+function toInputValue(iso){
+return iso.replace(" ","T");
+}
+function ev(time, title, text){
+return {time: time, title: title, text: text};
+}
+
+var SAMPLE_RECORDS = [
+{
+id: "s1",
+datetime: "2026-10-27 14:20",
+channel: "電話",
+party: "顧客",
+category: "過剰な要求",
+severity: "中",
+staff: "店舗スタッフA",
+status: "対応中",
+content: "「購入した調理器具が思った色と違う。使ったが全額返金しろ。できないなら本部に言って担当者を替えて謝罪に来させろ」と強い口調で要求。返金ポリシー（未使用品のみ）の説明に納得されず、同じ要求を繰り返している。",
+timeline: [
+ev("2026-10-27 14:20","登録","電話受付にて記録を作成。通話時間は約12分。"),
+ev("2026-10-27 14:25","一次対応","返金ポリシーを丁寧に説明し、未使用の交換対応が可能か確認すると回答。相手は「検討する」と一旦電話を切った。"),
+ev("2026-10-27 15:05","上長共有","副店長へ内容を共有。次回連絡時は二人対応とし、本部窓口の連絡先を案内する方針で合意。")
+]
+},
+{
+id: "s2",
+datetime: "2026-10-28 19:42",
+channel: "SNS",
+party: "不明",
+category: "SNS晒し予告",
+severity: "高",
+staff: "本部サポートB",
+status: "対応中",
+content: "公式アカウントへのDMで「レジ対応が遅かった。謝罪がなければ店員の名前と写真を投稿して拡散する」との予告。店員の個人が特定できる情報の投稿は避けるよう、冷静に対応中。",
+timeline: [
+ev("2026-10-28 19:42","登録","SNS担当がDMを検知し記録を作成。スクリーンショットを証跡として保管（社内共有フォルダ）。"),
+ev("2026-10-28 20:10","一次対応","待ち時間へのお詫びと、事実確認を行う旨を返信。個人情報の投稿はお控えいただきたい旨を丁寧に伝えた。"),
+ev("2026-10-28 20:30","上長共有","本部長へエスカレーション。投稿された場合のプラットフォーム通報手順を確認済み。")
+]
+},
+{
+id: "s3",
+datetime: "2026-10-29 11:05",
+channel: "対面",
+party: "顧客",
+category: "長時間拘束",
+severity: "中",
+staff: "店舗スタッフC",
+status: "完了",
+content: "店舗レジで「説明が不十分だ」と約70分にわたり説明を求め続け、他の来店客への対応が滞った。要求自体は商品説明の範囲だが、拘束時間が長く業務に支障が出た。",
+timeline: [
+ev("2026-10-29 11:05","登録","拘束開始から30分経過時点で記録を作成。"),
+ev("2026-10-29 11:40","一次対応","副店長が交代し、要点を文書（FAQシート）で渡す形に切り替え。具体的な不明点は後日メールで受け付けると案内。"),
+ev("2026-10-29 12:20","完了","相手が納得し退店。拘束は合計約75分。今後は30分を超えたら交代・文書案内に切り替えるルールを店舗で確認した。")
+]
+},
+{
+id: "s4",
+datetime: "2026-10-30 16:18",
+channel: "電話",
+party: "顧客",
+category: "暴言・脅迫",
+severity: "緊急",
+staff: "店舗スタッフA",
+status: "対応中",
+content: "「今から店に行ってやる」「ただじゃおかない」など身の危険を感じさせる発言を繰り返し、電話を切っても3回かけ直してきた。スタッフの安全確保を最優先とする事案。",
+timeline: [
+ev("2026-10-30 16:18","登録","脅迫的な発言があった時点で記録を作成。通話録音データを証跡として保全。"),
+ev("2026-10-30 16:26","一次対応","「安全に関わる発言があったため、この電話は終了します」と線引きを伝え、通話を終了。"),
+ev("2026-10-30 16:35","上長共有","店長・本部へ即時共有。店舗の出入口施錠と、来店時の二人対応・警察相談の実施を決定。"),
+ev("2026-10-30 17:10","外部連携","所轄警察署の相談窓口へ事案を相談。記録と録音の保管方法について助言を受けた。")
+]
+},
+{
+id: "s5",
+datetime: "2026-10-31 10:52",
+channel: "メール",
+party: "取引先",
+category: "セクハラ",
+severity: "高",
+staff: "本部サポートB",
+status: "未対応",
+content: "納品業者担当者から、業務連絡に無関係な個人的内容（容姿への言及やプライベートな誘い）が繰り返し送られてきた。担当スタッフが一人で抱え込まないよう、組織対応に切り替える必要がある。",
+timeline: [
+ev("2026-10-31 10:52","登録","担当スタッフからの相談を受け、本部サポートが記録を作成。メール原文を証跡として保管。")
+]
+}
+];
+
+var ESC_FLOWS = {
+"低": [
+"事実を記録する（日時・内容・相手の発言の要点）",
+"定型文で丁寧に対応し、通常業務の範囲で解決を図る",
+"同じ相手から繰り返される場合は深刻度「中」に引き上げて共有する"
+],
+"中": [
+"事実を記録し、証跡（録音・スクリーンショット・メール原文）を保全する",
+"一人で抱え込まず、同僚・上長に同席または交代を依頼する",
+"要求が通常業務の範囲を超える場合は、対応可能な範囲を明確に伝える（線引き）",
+"上長へ当日中に共有し、次回対応の方針を決める"
+],
+"高": [
+"直ちに上長へ共有し、対応を組織対応（二人以上）に切り替える",
+"証跡を保全する（録音・画面・原文を改変せず保管）",
+"対応窓口を一本化し、個別の約束・金銭的補償は即答しない",
+"必要に応じて本部・顧問弁護士・プラットフォーム運営へ相談する",
+"担当スタッフの心身の状態を確認し、配置転換や休憩を検討する"
+],
+"緊急": [
+"身の安全を最優先する（距離を取る・施錠・その場を離れる）",
+"脅迫など身の危険を感じる発言があった場合は、ためらわず110番通報を検討する",
+"通話・接触を終了し、以降の対応は上長・本部が引き継ぐ",
+"証跡を保全し、警察相談の記録（日時・窓口・助言内容）を残す",
+"関係店舗・本部へ即時共有し、来店・再連絡時の対応体制を決める",
+"担当スタッフへのケア（面談・業務調整）を実施する"
+]
+};
+
+var TEMPLATES = [
+{
+title: "線引き（対応できない要求への回答）",
+body: "ご要望の趣旨は承りました。ただいまのご要望につきましては、当店の規定上お受けすることができかねます。対応可能な範囲としては、をご案内できます。ご理解いただけますと幸いです。"
+},
+{
+title: "長時間の拘束への切り替え",
+body: "お話は承りました。恐れ入りますが、このあとの業務の都合上、お電話（ご対応）はあと5分ほどで終了させていただきます。残りのご不明点は、文書またはメールでご案内いたしますので、引き続きそちらで対応させてください。"
+},
+{
+title: "暴言への対応（警告と終了の予告）",
+body: "ご不満のお気持ちは受け止めます。ただ、そのようなお言葉でのお話が続きますと、対応を続けることが難しくなってしまいます。落ち着いてお話しいただければ、引き続きご対応いたします。"
+},
+{
+title: "SNS晒し予告への対応",
+body: "ご不便をおかけした点については、事実を確認のうえ、真摯に対応いたします。一方で、スタッフ個人が特定できる情報の投稿は、プライバシー保護の観点からお控えいただけますようお願いいたします。ご連絡はこちらの窓口で一括して承ります。"
+},
+{
+title: "上長への引き継ぎ（エスカレーション）",
+body: "ご要望の内容を確認しました。私の権限を超える内容のため、責任者に引き継ぎ、に改めてご連絡いたします。連絡先はこちらの窓口に一本化させてください。"
+}
+];
+
+var records = [];
+
+function loadRecords(){
+try{
+var raw = localStorage.getItem(STORAGE_KEY);
+if(raw){
+records = JSON.parse(raw);
+if(!Array.isArray(records)) records = [];
+}else{
+records = JSON.parse(JSON.stringify(SAMPLE_RECORDS));
+saveRecords();
+}
+}catch(e){
+records = JSON.parse(JSON.stringify(SAMPLE_RECORDS));
+}
+}
+function saveRecords(){
+try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(records));}catch(e){}
+}
+function esc(s){
+return String(s==null?"":s)
+.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+/* ---------- ダッシュボード ---------- */
+function countBy(key, values){
+  var map = {};
+  values.forEach(function(v){ map[v]=0; });
+  records.forEach(function(r){ if(map.hasOwnProperty(r[key])) map[r[key]]++; });
+  return map;
+}
+function renderBars(containerId, map, values, sevMode){
+  var el = document.getElementById(containerId);
+  var max = 1;
+  values.forEach(function(v){ if(map[v]>max) max = map[v]; });
+  var html = "";
+  values.forEach(function(v){
+    var pct = Math.round(map[v]/max*100);
+    var cls = sevMode ? ("bar-fill "+SEV_CLASS[v]) : "bar-fill";
+    html += '<div class="bar-row"><span>'+esc(v)+'</span>'
+      + '<span class="bar-track"><span class="'+cls+'" style="display:block;width:'+pct+'%"></span></span>'
+      + '<span>'+map[v]+'件</span></div>';
+  });
+  el.innerHTML = html;
+}
+function renderDashboard(){
+  var open = records.filter(function(r){ return r.status!=="完了"; }).length;
+  var urgent = records.filter(function(r){ return r.severity==="緊急"; }).length;
+  var high = records.filter(function(r){ return r.severity==="高"; }).length;
+  var done = records.filter(function(r){ return r.status==="完了"; }).length;
+  var stats = [
+    {num: records.length, label: "総件数"},
+    {num: open, label: "未完了（未対応＋対応中）"},
+    {num: urgent, label: "緊急"},
+    {num: high, label: "高"},
+    {num: done, label: "完了"}
+  ];
+  document.getElementById("stats-grid").innerHTML = stats.map(function(s){
+    return '<div class="stat"><span class="num">'+s.num+'</span><span class="label">'+esc(s.label)+'</span></div>';
+  }).join("");
+  renderBars("bars-category", countBy("category", CATEGORIES), CATEGORIES, false);
+  renderBars("bars-severity", countBy("severity", SEVERITIES), SEVERITIES, true);
+  renderBars("bars-channel", countBy("channel", CHANNELS), CHANNELS, false);
+}
+
+/* ---------- 一覧 ---------- */
+function getFiltered(){
+  var q = document.getElementById("q-search").value.trim();
+  var ch = document.getElementById("q-channel").value;
+  var sev = document.getElementById("q-severity").value;
+  var st = document.getElementById("q-status").value;
+  return records.filter(function(r){
+    if(ch && r.channel!==ch) return false;
+    if(sev && r.severity!==sev) return false;
+    if(st && r.status!==st) return false;
+    if(q){
+      var hay = (r.content+" "+r.staff+" "+r.category+" "+r.party);
+      if(hay.indexOf(q)===-1) return false;
+    }
+    return true;
+  }).slice().sort(function(a,b){ return a.datetime < b.datetime ? 1 : -1; });
+}
+var openDetails = {};
+function renderList(){
+  var list = getFiltered();
+  document.getElementById("list-count").textContent = list.length+"件を表示中（全"+records.length+"件）";
+  var box = document.getElementById("record-list");
+  if(list.length===0){
+    box.innerHTML = '<p class="note">条件に合う記録がありません。</p>';
+    return;
+  }
+  box.innerHTML = list.map(function(r){
+    var tl = r.timeline.map(function(e){
+      return '<li><time>'+esc(e.time)+'</time><strong>'+esc(e.title)+'</strong>｜'+esc(e.text)+'</li>';
+    }).join("");
+    var detail = openDetails[r.id] ?
+      '<div class="detail-box">'
+      + '<p class="meta">相手区分: '+esc(r.party)+' ／ 分類: '+esc(r.category)+' ／ 対応者: '+esc(r.staff)+'</p>'
+      + '<h3 style="margin-top:8px">証跡タイムライン</h3>'
+      + '<ol class="timeline">'+tl+'</ol>'
+      + '<form class="add-event" data-id="'+esc(r.id)+'">'
+      + '<div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">'
+      + '<div class="field"><label>経過の種別</label><select name="title">'
+      + '<option value="一次対応">一次対応</option><option value="上長共有">上長共有</option>'
+      + '<option value="外部連携">外部連携</option><option value="再連絡">再連絡</option><option value="完了">完了</option>'
+      + '</select></div>'
+      + '<div class="field"><label>ステータス変更</label><select name="status">'
+      + '<option value="">変更しない</option><option value="未対応">未対応</option><option value="対応中">対応中</option><option value="完了">完了</option>'
+      + '</select></div></div>'
+      + '<div class="field" style="margin-top:6px"><label>経過メモ</label><textarea name="text" rows="2" placeholder="経過を追加記録"></textarea></div>'
+      + '<div class="form-actions"><button type="submit" class="btn btn-primary btn-small">タイムラインに追加</button></div>'
+      + '</form></div>'
+      : "";
+    return '<article class="record">'
+      + '<div class="record-head">'
+      + '<span class="badge '+SEV_CLASS[r.severity]+'">深刻度: '+esc(r.severity)+'</span>'
+      + '<span class="badge channel">'+esc(r.channel)+'</span>'
+      + '<span class="badge '+STATUS_CLASS[r.status]+'">'+esc(r.status)+'</span>'
+      + '<time datetime="'+esc(toInputValue(r.datetime))+'">'+esc(r.datetime)+'</time>'
+      + '<span class="who">'+esc(r.category)+'／'+esc(r.staff)+'</span>'
+      + '</div>'
+      + '<p>'+esc(r.content)+'</p>'
+      + '<div class="record-actions">'
+      + '<button type="button" class="btn btn-ghost btn-small" data-toggle="'+esc(r.id)+'">'+(openDetails[r.id]?"証跡を閉じる":"証跡タイムライン")+'</button>'
+      + '<button type="button" class="btn btn-ghost btn-small" data-del="'+esc(r.id)+'">削除</button>'
+      + '</div>'
+      + detail
+      + '</article>';
+  }).join("");
+}
+
+/* ---------- エスカレーション ---------- */
+function renderEscalation(){
+  var sev = document.getElementById("esc-severity").value;
+  var steps = ESC_FLOWS[sev] || [];
+  var saved = {};
+  try{ saved = JSON.parse(localStorage.getItem("hrl_esc_"+sev) || "{}"); }catch(e){}
+  document.getElementById("esc-flow").innerHTML =
+    '<strong>深刻度「'+esc(sev)+'」の対応フロー</strong><ul>'
+    + steps.map(function(s, i){
+        var checked = saved[i] ? " checked" : "";
+        return '<li><label style="font-weight:400;font-size:.9rem"><input type="checkbox" data-esc="'+i+'"'+checked+'>'+esc(s)+'</label></li>';
+      }).join("")
+    + '</ul>';
+  var boxes = document.querySelectorAll("[data-esc]");
+  boxes.forEach(function(b){
+    b.addEventListener("change", function(){
+      var state = {};
+      document.querySelectorAll("[data-esc]").forEach(function(x){ state[x.getAttribute("data-esc")] = x.checked; });
+      try{ localStorage.setItem("hrl_esc_"+sev, JSON.stringify(state)); }catch(e){}
+    });
+  });
+}
+
+/* ---------- テンプレート ---------- */
+function renderTemplates(){
+  document.getElementById("template-list").innerHTML = TEMPLATES.map(function(t, i){
+    return '<div class="template"><h3>'+esc(t.title)+'</h3><pre id="tpl-'+i+'">'+esc(t.body)+'</pre>'
+      + '<button type="button" class="btn btn-ghost btn-small" data-copy="'+i+'">コピー</button></div>';
+  }).join("");
+  document.querySelectorAll("[data-copy]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var text = TEMPLATES[Number(btn.getAttribute("data-copy"))].body;
+      function done(){ btn.textContent = "コピーしました"; setTimeout(function(){ btn.textContent = "コピー"; }, 1500); }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text); done(); });
+      }else{
+        fallbackCopy(text); done();
+      }
+    });
+  });
+}
+function fallbackCopy(text){
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try{ document.execCommand("copy"); }catch(e){}
+  document.body.removeChild(ta);
+}
+
+/* ---------- CSV / 印刷 ---------- */
+function csvCell(v){
+  return '"' + String(v==null?"":v).replace(/"/g,'""') + '"';
+}
+function exportCSV(){
+  var header = ["日時","チャネル","相手区分","分類","深刻度","対応者","ステータス","内容メモ","経過件数"];
+  var lines = [header.map(csvCell).join(",")];
+  records.slice().sort(function(a,b){ return a.datetime < b.datetime ? -1 : 1; }).forEach(function(r){
+    lines.push([r.datetime, r.channel, r.party, r.category, r.severity, r.staff, r.status, r.content, r.timeline.length].map(csvCell).join(","));
+  });
+  var blob = new Blob(["\uFEFF" + lines.join("\r\n")], {type: "text/csv;charset=utf-8"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "harassment-records.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+}
+function printReport(){
+  var rows = records.slice().sort(function(a,b){ return a.datetime < b.datetime ? -1 : 1; }).map(function(r){
+    var last = r.timeline.length ? r.timeline[r.timeline.length-1] : null;
+    return "<tr><td>"+esc(r.datetime)+"</td><td>"+esc(r.channel)+"</td><td>"+esc(r.category)
+      +"</td><td>"+esc(r.severity)+"</td><td>"+esc(r.staff)+"</td><td>"+esc(r.status)
+      +"</td><td>"+esc(r.content)+"</td><td>"+(last ? esc(last.time+" "+last.title) : "-")+"</td></tr>";
+  }).join("");
+  document.getElementById("print-area").innerHTML =
+    "<h1>カスハラ対応記録レポート</h1>"
+    + "<p>くらし雑貨 ほのぼのマート（架空）｜出力日時: "+esc(nowStr())+"｜総件数: "+records.length+"件</p>"
+    + "<table><thead><tr><th>日時</th><th>チャネル</th><th>分類</th><th>深刻度</th><th>対応者</th><th>ステータス</th><th>内容</th><th>最新の経過</th></tr></thead>"
+    + "<tbody>"+rows+"</tbody></table>";
+  window.print();
+}
+
+/* ---------- イベント ---------- */
+function renderAll(){
+  renderDashboard();
+  renderList();
+}
+document.getElementById("record-form").addEventListener("submit", function(e){
+  e.preventDefault();
+  var dt = document.getElementById("f-datetime").value.replace("T"," ");
+  var action = document.getElementById("f-action").value.trim();
+  var rec = {
+    id: "r" + Date.now(),
+    datetime: dt,
+    channel: document.getElementById("f-channel").value,
+    party: document.getElementById("f-party").value,
+    category: document.getElementById("f-category").value,
+    severity: document.getElementById("f-severity").value,
+    staff: document.getElementById("f-staff").value.trim(),
+    status: action ? "対応中" : "未対応",
+    content: document.getElementById("f-content").value.trim(),
+    timeline: [ ev(dt, "登録", "対応記録を作成。") ]
+  };
+  if(action) rec.timeline.push(ev(dt, "一次対応", action));
+  records.push(rec);
+  saveRecords();
+  renderAll();
+  e.target.reset();
+  setDefaultDatetime();
+  alert("記録を登録しました。");
+});
+["q-search","q-channel","q-severity","q-status"].forEach(function(id){
+  document.getElementById(id).addEventListener("input", renderList);
+  document.getElementById(id).addEventListener("change", renderList);
+});
+document.getElementById("record-list").addEventListener("click", function(e){
+  var t = e.target;
+  if(t.hasAttribute("data-toggle")){
+    var id1 = t.getAttribute("data-toggle");
+    openDetails[id1] = !openDetails[id1];
+    renderList();
+  }
+  if(t.hasAttribute("data-del")){
+    var id2 = t.getAttribute("data-del");
+    if(confirm("この記録を削除しますか？")){
+      records = records.filter(function(r){ return r.id !== id2; });
+      delete openDetails[id2];
+      saveRecords();
+      renderAll();
+    }
+  }
+});
+document.getElementById("record-list").addEventListener("submit", function(e){
+  if(!e.target.classList.contains("add-event")) return;
+  e.preventDefault();
+  var id = e.target.getAttribute("data-id");
+  var rec = null;
+  records.forEach(function(r){ if(r.id===id) rec = r; });
+  if(!rec) return;
+  var title = e.target.querySelector('[name="title"]').value;
+  var text = e.target.querySelector('[name="text"]').value.trim();
+  var status = e.target.querySelector('[name="status"]').value;
+  if(text || title==="完了"){
+    rec.timeline.push(ev(nowStr(), title, text || "対応を完了として記録。"));
+  }
+  if(status){
+    rec.status = status;
+    if(status==="完了" && !text && title!=="完了"){
+      rec.timeline.push(ev(nowStr(), "完了", "ステータスを完了に変更。"));
+    }
+  }
+  saveRecords();
+  renderAll();
+});
+document.getElementById("esc-severity").addEventListener("change", renderEscalation);
+document.getElementById("btn-csv").addEventListener("click", exportCSV);
+document.getElementById("btn-print").addEventListener("click", printReport);
+document.getElementById("btn-reset").addEventListener("click", function(){
+  if(confirm("記録をサンプルデータに戻しますか？（現在の記録は消えます）")){
+    records = JSON.parse(JSON.stringify(SAMPLE_RECORDS));
+    openDetails = {};
+    saveRecords();
+    renderAll();
+  }
+});
+function setDefaultDatetime(){
+  var d = new Date();
+  function p(n){ return (n<10?"0":"")+n; }
+  document.getElementById("f-datetime").value =
+    d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
+}
+
+/* ---------- 初期化 ---------- */
+loadRecords();
+setDefaultDatetime();
+renderAll();
+renderEscalation();
+renderTemplates();
+</script>
+</body>
+</html>
